@@ -8,6 +8,8 @@ enum ResourceType {
 project
 version
 issue
+membership
+user
 }
 
 ##########
@@ -19,9 +21,9 @@ Function Connect-Redmine {
    .DESCRIPTION
     Connect to the Redmine server and set the authorization variable in script scope
    .EXAMPLE
-    Connect-Redmine http://demo.redmine.org
+    Connect-Redmine http://testredmine
    .EXAMPLE
-    Connect-Redmine demo.redmine.org
+    Connect-Redmine testredmine
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
@@ -29,10 +31,13 @@ Function Connect-Redmine {
     Param(
         [Parameter(Mandatory=$True)][String]$script:Server
     )
+
+    $Credential = Get-Credential -UserName $env:USERNAME -Message "Credential for $script:Server"
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 <#
     $WebSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     $IWRParams = @{
-        Credential = Get-Credential -UserName $env:USERNAME -Message "Credential for $script:Server"
+        Credential = $Credential
         SessionVariable = Get-Variable -name WebSession -ValueOnly
         Method = 'GET'
         Uri = $script:Server + '/login'
@@ -42,7 +47,6 @@ Function Connect-Redmine {
     $script:WebSession = Get-Variable -name $WebSession -ValueOnly
 #>
 #
-    $Credential = Get-Credential -UserName $env:USERNAME -Message "Credential for $script:Server"
     $bytes = [System.Text.Encoding]::UTF8.GetBytes(
         ('{0}:{1}' -f $Credential.UserName, $Credential.GetNetworkCredential().Password)
     )
@@ -113,45 +117,61 @@ Function Send-HTTPRequest {
     Return $Response
 }
 
+Function Get-Multipages {
+    Param(
+        [Parameter(Mandatory=$true)][String]$URI
+    )
+    $offset = 0
+    $limit = 100
+    $Response = Send-HTTPRequest -Method GET -URI "$URI`?offset=$offset&limit=$limit"
+    $remain = $Response.total_count
+    While ($remain -gt 0) {
+        [Array]$collection += $Response.$("$type`s")
+        $remain -= $limit
+        $offset += $limit
+        if ($remain -lt 100) { $limit = $remain}
+        #Write-Host $offset $limit $remain
+        $Response = Send-HTTPRequest -Method GET -URI "$URI`?offset=$offset&limit=$limit"
+    }
+    Return $collection
+}
+
 ##########
 
 Function Search-RedmineResource {
 <#
    .SYNOPSIS
-    Search Redmine resource by name
+    Search Redmine resource by keyword
    .DESCRIPTION
-    Search Redmine resource by name
+    Search Redmine resource by keyword
    .EXAMPLE
-    Search-Redmine project demoproj
+    Search-RedmineResource project demoproj
    .EXAMPLE
-    Search-Redmine version demover -project_id demoproj
+    Search-RedmineResource version demover -project_id demoproj
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
     Param(
         [Parameter(Mandatory=$true)][ResourceType]$type,
-        [String]$name,
+        [String]$keyword,
         [String]$project_id
     )
-    If ($type -eq 'version') {
-        $Response = Send-HTTPRequest -Method GET -URI "/projects/$project_id/versions.json"
-        $collection = $Response.versions
-    } Else {
-        $offset = 0
-        $limit = 100
-        $Response = Send-HTTPRequest -Method GET -URI "/$type`s.json?offset=0&limit=100"
-        $remain = $Response.total_count
-        While ($remain -gt 0) {
-            [Array]$collection += $Response.$("$type`s")
-            $remain -= $limit
-            $offset += $limit
-            if ($remain -lt 100) { $limit = $remain}
-            #Write-Host $offset $limit $remain
-            $Response = Send-HTTPRequest -Method GET -URI "/$type`s.json?offset=$offset&limit=$limit"
+
+    Switch ($type) {
+        'version' { 
+            $Response = Send-HTTPRequest -Method GET -URI "/projects/$project_id/$type`s.json"
+            $collection = $Response.$("$type`s")
         }
+        'membership' { $collection = Get-Multipages "/projects/$project_id/$type`s.json" }
+        default { $collection = Get-Multipages "/$type`s.json" }
     }
 
-    Return ($collection | Where-Object { $_.name -Match $name })
+    Switch ($type) {
+        'issue' { Return ($collection | Where-Object { $_.subject -Match $keyword }) }
+        'user' { Return ($collection | Where-Object { $_.login -Match $keyword }) }
+        'membership' { Return ($collection | Where-Object { $_.user.name -Match $keyword }) }
+        default { Return ($collection | Where-Object { $_.name -Match $keyword }) }
+    }
 }
 
 Function New-RedmineResource {
@@ -161,11 +181,11 @@ Function New-RedmineResource {
    .DESCRIPTION
     Create a new Redmine resource
    .EXAMPLE
-    New-Redmine project -name test13 -identifier test13
+    New-RedmineResource project -identifier test13 -name test13
    .EXAMPLE
-    New-Redmine version -project_id test13 -name testver
+    New-RedmineResource version -project_id test13 -name testver
    .EXAMPLE
-    New-Redmine issue -project_id test13 -subject testissue
+    New-RedmineResource issue -project_id test13 -subject testissue
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
@@ -236,9 +256,9 @@ Function Get-RedmineResource {
    .DESCRIPTION
     Get Redmine resource item by id
    .EXAMPLE
-    Get-Redmine project 438
+    Get-RedmineResource project 438
    .EXAMPLE
-    Get-Redmine version 398
+    Get-RedmineResource version 398
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
@@ -246,10 +266,11 @@ Function Get-RedmineResource {
         [Parameter(Mandatory=$true)][ResourceType]$type,
         [Parameter(Mandatory=$true)][String]$id
     )
-    If ($type -eq 'issue') {
-        $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=journals,watchers").issue
-    } Else {
-        $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json").$type
+    
+    Switch -Regex ($type) {
+        '\A(issue)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=journals,watchers").issue }
+        '\A(user)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=memberships,groups").user }
+        default { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json").$type }
     }
 
     $Response
@@ -262,16 +283,17 @@ Function Edit-RedmineResource {
    .DESCRIPTION
     Edit a Redmine resource
    .EXAMPLE
-    Edit-Redmine project -project_id test13 -description 'change description'
+    Edit-RedmineResource project -id test13 -description 'change description'
    .EXAMPLE
-    Edit-Redmine version -version_id 406 -due_date 2018-09-29
+    Edit-RedmineResource version -id 406 -due_date 2018-09-29
    .EXAMPLE
-    Edit-Redmine issue -issue_id 29551 -version_id 406
+    Edit-RedmineResource issue -id 29551 -version_id 406
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
     Param(
         [Parameter(Mandatory=$true)][ResourceType]$type,
+        [Parameter(Mandatory=$true)][String]$id,
         [String]$project_id,
         [String]$name,
         [String]$description,
@@ -297,7 +319,7 @@ Function Edit-RedmineResource {
         If ($notes) { $JSON.issue.Add( 'notes', $notes )}
         $JSON = $JSON | ConvertTo-Json
 
-        $Response = Send-HTTPRequest -Method PUT -URI /issues/$issue_id.json -Body $JSON
+        $Response = Send-HTTPRequest -Method PUT -URI /issues/$id.json -Body $JSON
 
     } Elseif ($type -eq 'version') {
         $JSON = @{ version = @{} }
@@ -307,7 +329,7 @@ Function Edit-RedmineResource {
         If ($status) { $JSON.version.Add( 'status', $status )}
         $JSON = $JSON | ConvertTo-Json
 
-        $Response = Send-HTTPRequest -Method PUT -URI /versions/$version_id.json -Body $JSON
+        $Response = Send-HTTPRequest -Method PUT -URI /versions/$id.json -Body $JSON
 
     } Elseif ($type -eq 'project') {
         $JSON = @{ project = @{} }
@@ -316,7 +338,7 @@ Function Edit-RedmineResource {
         If ($default_version_id) { $JSON.project.Add( 'default_version_id', $default_version_id )}
         $JSON = $JSON | ConvertTo-Json
 
-        $Response = Send-HTTPRequest -Method PUT -URI "/projects/$project_id.json" -Body $JSON
+        $Response = Send-HTTPRequest -Method PUT -URI "/projects/$id.json" -Body $JSON
     }
 }
 
@@ -327,7 +349,7 @@ Function Remove-RedmineResource {
    .DESCRIPTION
     Remove a Redmine resource. You need administrator permission to delete a project.
    .EXAMPLE
-    Remove-Redmine issue 29551
+    Remove-RedmineResource issue 29551
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
@@ -337,22 +359,4 @@ Function Remove-RedmineResource {
     )
 
     $Response = Send-HTTPRequest -Method DELETE -URI "/$type`s/$id.json"
-}
-
-Function Get-RedmineUsers {
-<#
-   .SYNOPSIS
-    Get Redmine users list
-   .DESCRIPTION
-    You need administrator permission to get Redmine users list.
-   .EXAMPLE
-    Get-RedmineUsers
-   .LINK
-    https://github.com/hamletmun/PSRedmine
-#>
-    $Response = Send-HTTPRequest -Method GET -URI "/users.json"
-    $RedmineUsers = @{}
-    $Response.users | ForEach-Object { $RedmineUsers += @{$_.login = $_.id} }
-
-    Return $RedmineUsers
 }
