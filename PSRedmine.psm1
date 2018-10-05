@@ -4,13 +4,15 @@ http://www.redmine.org/projects/redmine/wiki/Rest_api
 
 #>
 
-enum ResourceType {
-project
-version
-issue
-membership
-user
+Add-Type -TypeDefinition @'
+public enum ResourceType {
+    project,
+    version,
+    issue,
+    membership,
+    user
 }
+'@
 
 ##########
 
@@ -158,7 +160,7 @@ Function Search-RedmineResource {
     )
 
     Switch ($type) {
-        'version' { 
+        'version' {
             $Response = Send-HTTPRequest -Method GET -URI "/projects/$project_id/$type`s.json"
             $collection = $Response.$("$type`s")
         }
@@ -266,7 +268,7 @@ Function Get-RedmineResource {
         [Parameter(Mandatory=$true)][ResourceType]$type,
         [Parameter(Mandatory=$true)][String]$id
     )
-    
+
     Switch -Regex ($type) {
         '\A(issue)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=journals,watchers").issue }
         '\A(user)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=memberships,groups").user }
