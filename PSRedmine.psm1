@@ -12,6 +12,18 @@ public enum ResourceType {
     membership,
     user
 }
+public enum StatusType {
+    open,
+    locked,
+    closed
+}
+public enum SharingType {
+    none,
+    descendants,
+    hierarchy,
+    tree,
+    system
+}
 '@
 
 ##########
@@ -205,7 +217,8 @@ Function New-RedmineResource {
         [String]$subject,
         [String]$notes,
         [Datetime]$due_date,
-        [String]$status
+        [StatusType]$status,
+        [SharingType]$sharing
     )
 
     If ($type -eq 'issue') {
@@ -228,7 +241,8 @@ Function New-RedmineResource {
         If ($name) { $JSON.version.Add( 'name', $name )}
         If ($description) { $JSON.version.Add( 'description', $description )}
         If ($due_date) { $JSON.version.Add( 'due_date', $due_date.ToString("yyyy-MM-dd") )}
-        If ($status) { $JSON.version.Add( 'status', $status )}
+        If ($status) { $JSON.version.Add( 'status', $status.ToString() )}
+        If ($sharing) { $JSON.version.Add( 'sharing', $sharing.ToString() )}
         $JSON = $JSON | ConvertTo-Json
 
         #Write-Host $JSON
@@ -307,7 +321,8 @@ Function Edit-RedmineResource {
         [String]$subject,
         [String]$notes,
         [Datetime]$due_date,
-        [String]$status
+        [StatusType]$status,
+        [SharingType]$sharing
     )
 
     If ($type -eq 'issue') {
@@ -328,7 +343,8 @@ Function Edit-RedmineResource {
         If ($name) { $JSON.version.Add( 'name', $name )}
         If ($description) { $JSON.version.Add( 'description', $description )}
         If ($due_date) { $JSON.version.Add( 'due_date', $due_date.ToString("yyyy-MM-dd") )}
-        If ($status) { $JSON.version.Add( 'status', $status )}
+        If ($status) { $JSON.version.Add( 'status', $status.ToString() )}
+        If ($sharing) { $JSON.version.Add( 'sharing', $sharing.ToString() )}
         $JSON = $JSON | ConvertTo-Json
 
         $Response = Send-HTTPRequest -Method PUT -URI /versions/$id.json -Body $JSON
