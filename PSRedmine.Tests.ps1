@@ -43,7 +43,7 @@ InModuleScope PSRedmine {
             Mock Send-HTTPRequest -MockWith { $true } -ParameterFilter { $Method -eq 'GET' -and $Uri -like "/versions/*.json" }
             It 'version' { Get-RedmineResource version 123 }
 
-            Mock Send-HTTPRequest -MockWith { $true } -ParameterFilter { $Method -eq 'GET' -and $Uri -like "/issues/*.json?include=journals,watchers" }
+            Mock Send-HTTPRequest -MockWith { $true } -ParameterFilter { $Method -eq 'GET' -and $Uri -like "/issues/*.json?include=children,attachments,relations,journals,watchers" }
             It 'issue' { Get-RedmineResource issue 1234 }
 
             Assert-MockCalled -CommandName Send-HTTPRequest -Times 5 -Exactly

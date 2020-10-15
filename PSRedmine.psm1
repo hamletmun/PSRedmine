@@ -95,9 +95,9 @@ Function Disconnect-Redmine {
    .DESCRIPTION
     Disconnect from the Redmine server
    .EXAMPLE
-    Connect-Redmine http://demo.redmine.org
+    Disconnect-Redmine http://demo.redmine.org
    .EXAMPLE
-    Connect-Redmine demo.redmine.org
+    Disconnect-Redmine demo.redmine.org
    .LINK
     https://github.com/hamletmun/PSRedmine
 #>
@@ -221,47 +221,28 @@ Function New-RedmineResource {
         [SharingType]$sharing
     )
 
-    If ($type -eq 'issue') {
-        $JSON = @{ issue = @{} }
-        If ($project_id) { $JSON.issue.Add( 'project_id', $project_id )}
-        If ($tracker_id) { $JSON.issue.Add( 'tracker_id', $tracker_id )}
-        If ($status_id) { $JSON.issue.Add( 'status_id', $status_id )}
-        If ($version_id) { $JSON.issue.Add( 'fixed_version_id', $version_id )}
-        If ($subject) { $JSON.issue.Add( 'subject', $subject )}
-        If ($description) { $JSON.issue.Add( 'description', $description )}
-        If ($notes) { $JSON.issue.Add( 'notes', $notes )}
-        $JSON = $JSON | ConvertTo-Json
+    [String]$type = $type
+    [String]$status = $status
+    [String]$sharing = $sharing
 
-        #Write-Host $JSON
-
-        $Response = Send-HTTPRequest -Method POST -URI /issues.json -Body $JSON
+    $resource = @{ $type = @{} }
+    foreach ($boundparam in $PSBoundParameters.GetEnumerator()) {
+        Switch ($boundparam.Key) {
+            'type' { continue }
+            'due_date' { $resource.$type.Add( 'due_date', $due_date.ToString("yyyy-MM-dd") ) }
+            'version_id' { $resource.$type.Add( 'fixed_version_id', $boundparam.Value ) }
+            default { $resource.$type.Add( $boundparam.Key, $boundparam.Value ) }
+        }
     }
-    Elseif ($type -eq 'version') {
-        $JSON = @{ version = @{} }
-        If ($name) { $JSON.version.Add( 'name', $name )}
-        If ($description) { $JSON.version.Add( 'description', $description )}
-        If ($due_date) { $JSON.version.Add( 'due_date', $due_date.ToString("yyyy-MM-dd") )}
-        If ($status) { $JSON.version.Add( 'status', $status.ToString() )}
-        If ($sharing) { $JSON.version.Add( 'sharing', $sharing.ToString() )}
-        $JSON = $JSON | ConvertTo-Json
+    $JSON = $resource | ConvertTo-Json -Depth 10
 
-        #Write-Host $JSON
-
-        $Response = Send-HTTPRequest -Method POST -URI /projects/$project_id/versions.json -Body $JSON
-    }
-    Elseif ($type -eq 'project') {
-        $JSON = @{ project = @{} }
-        If ($name) { $JSON.project.Add( 'name', $name )}
-        If ($description) { $JSON.project.Add( 'description', $description )}
-        If ($identifier) { $JSON.project.Add( 'identifier', $identifier )}
-        If ($default_version_id) { $JSON.project.Add( 'default_version_id', $default_version_id )}
-        $JSON = $JSON | ConvertTo-Json
-
-        #Write-Host $JSON
-
-        $Response = Send-HTTPRequest -Method POST -URI "/projects.json" -Body $JSON
+    $Uri = Switch($type) {
+        'project' { '/projects.json' }
+        'issue' { '/issues.json' }
+        'version' { '/projects/' + $project_id + '/versions.json' }
     }
 
+    $Response = Send-HTTPRequest -Method POST -URI $Uri -Body $JSON
     $Response
 }
 
@@ -284,7 +265,7 @@ Function Get-RedmineResource {
     )
 
     Switch -Regex ($type) {
-        '\A(issue)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=journals,watchers").issue }
+        '\A(issue)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=children,attachments,relations,journals,watchers").issue }
         '\A(user)\Z' { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json?include=memberships,groups").user }
         default { $Response = (Send-HTTPRequest -Method GET -URI "/$type`s/$id.json").$type }
     }
@@ -325,39 +306,28 @@ Function Edit-RedmineResource {
         [SharingType]$sharing
     )
 
-    If ($type -eq 'issue') {
-        $JSON = @{ issue = @{} }
-        If ($project_id) { $JSON.issue.Add( 'project_id', $project_id )}
-        If ($tracker_id) { $JSON.issue.Add( 'tracker_id', $tracker_id )}
-        If ($status_id) { $JSON.issue.Add( 'status_id', $status_id )}
-        If ($version_id) { $JSON.issue.Add( 'fixed_version_id', $version_id )}
-        If ($subject) { $JSON.issue.Add( 'subject', $subject )}
-        If ($description) { $JSON.issue.Add( 'description', $description )}
-        If ($notes) { $JSON.issue.Add( 'notes', $notes )}
-        $JSON = $JSON | ConvertTo-Json
+    [String]$type = $type
+    [String]$status = $status
+    [String]$sharing = $sharing
 
-        $Response = Send-HTTPRequest -Method PUT -URI /issues/$id.json -Body $JSON
-
-    } Elseif ($type -eq 'version') {
-        $JSON = @{ version = @{} }
-        If ($name) { $JSON.version.Add( 'name', $name )}
-        If ($description) { $JSON.version.Add( 'description', $description )}
-        If ($due_date) { $JSON.version.Add( 'due_date', $due_date.ToString("yyyy-MM-dd") )}
-        If ($status) { $JSON.version.Add( 'status', $status.ToString() )}
-        If ($sharing) { $JSON.version.Add( 'sharing', $sharing.ToString() )}
-        $JSON = $JSON | ConvertTo-Json
-
-        $Response = Send-HTTPRequest -Method PUT -URI /versions/$id.json -Body $JSON
-
-    } Elseif ($type -eq 'project') {
-        $JSON = @{ project = @{} }
-        If ($name) { $JSON.project.Add( 'name', $name )}
-        If ($description) { $JSON.project.Add( 'description', $description )}
-        If ($default_version_id) { $JSON.project.Add( 'default_version_id', $default_version_id )}
-        $JSON = $JSON | ConvertTo-Json
-
-        $Response = Send-HTTPRequest -Method PUT -URI "/projects/$id.json" -Body $JSON
+    $resource = @{ $type = @{} }
+    foreach ($boundparam in $PSBoundParameters.GetEnumerator()) {
+        Switch ($boundparam.Key) {
+            'type' { continue }
+            'due_date' { $resource.$type.Add( 'due_date', $due_date.ToString("yyyy-MM-dd") ) }
+            'version_id' { $resource.$type.Add( 'fixed_version_id', $boundparam.Value ) }
+            default { $resource.$type.Add( $boundparam.Key, $boundparam.Value ) }
+        }
     }
+    $JSON = $resource | ConvertTo-Json -Depth 10
+
+    $Uri = Switch($type) {
+        'project' { '/projects/' + $id + '.json' }
+        'issue' { '/issues/' + $id + '.json' }
+        'version' { '/versions/' + $id + '.json' }
+    }
+    $Response = Send-HTTPRequest -Method PUT -URI $Uri -Body $JSON
+
 }
 
 Function Remove-RedmineResource {
