@@ -206,6 +206,7 @@ Function New-RedmineResource {
     Param(
         [Parameter(Mandatory=$true)][ResourceType]$type,
         [String]$project_id,
+        [String]$parent_issue_id,	
         [String]$identifier,
         [String]$name,
         [String]$description,
