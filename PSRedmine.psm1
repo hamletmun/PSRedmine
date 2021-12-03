@@ -405,8 +405,9 @@ Function Connect-Redmine{
 			Headers = @{'X-Redmine-API-Key'=$Key}
 		}
 	} Else {
-		If (!($Username)) { If (!($Username = Read-Host "Enter username [$env:USERNAME?]")) { $Username = $env:USERNAME } }
-		If (!($Password)) { [Security.SecureString]$Password = Read-Host "Enter password for [$Username]" -AsSecureString }
+		If (!($Username)) { If (!($Username = Read-Host "Enter username or blank for [$env:USERNAME]")) { $Username = $env:USERNAME } }
+		If ($Password) { [Security.SecureString]$Password = ConvertTo-SecureString $Password -AsPlainText -Force }
+		Else { [Security.SecureString]$Password = Read-Host "Enter password for [$Username]" -AsSecureString }
 		$cred = New-Object System.Management.Automation.PSCredential ($Username, $Password)
 		$IWRParams = @{
 			Credential = $cred
