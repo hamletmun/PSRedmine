@@ -13,6 +13,8 @@
 Connect, CRUD, Disconnect
 ```PowerShell
 Connect-Redmine demo.redmine.org
+Connect-Redmine demo.redmine.org 0123456789abcdef0123456789abcdef01234567
+Connect-Redmine demo.redmine.org -Username hamletmun
 
 New-RedmineResource project -identifier test99 -name testproject
 New-RedmineResource version -project_id 475 -name testversion
