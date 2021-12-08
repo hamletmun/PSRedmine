@@ -47,3 +47,4 @@ Disconnect-Redmine
 
 ## Reference
 * [Redmine API](http://www.redmine.org/projects/redmine/wiki/Rest_api) wiki page
+* [Python-Redmine](https://github.com/maxtepkeev/python-redmine)
