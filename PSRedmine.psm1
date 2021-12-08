@@ -1,11 +1,6 @@
 #Requires -Version 5.0
 
-<#
-
-http://www.redmine.org/projects/redmine/wiki/Rest_api
-https://github.com/maxtepkeev/python-redmine
-
-#>
+$DebugPreference = "SilentlyContinue"
 
 enum ResourceType {
 	project
@@ -177,6 +172,8 @@ Class BaseResource {
 			}
 			$remain -= $limit
 			$offset += $limit
+			Write-Debug $offset
+			Write-Debug $remain
 			if ($remain -lt 100) { $limit = $remain}
 
 			$Response = $this.request('GET', $base_url + '?offset=' + $offset + '&limit=' + $limit) # + $this.include + $filter)
@@ -192,34 +189,13 @@ Class BaseResource {
 			{$_ -in 'membership','version'} { 'projects/' + $project_id + '/' + $this.setname }
 			default { $this.setname }
 		}
-		$collection = $this.allpages($path + '.json', $filter)
-
-		<#
-		$offset = 0
-		$limit = 100
-		$IRMParams = @{
-			WebSession = $this.Session
-			Method = 'GET'
-			Uri = $this.Server + $path + '.json?offset=' + $offset + '&limit=' + $limit + $this.include + $filter
-		}
-		$Response = Invoke-RestMethod @IRMParams
-		$remain = $Response.total_count
-
+		Write-Debug $path
 		$collection = @{}
-		While ($remain -gt 0) {
-			$Response.$($this.setname) | % {
-				#$collection.Add($_.id, $_)
-				$item = $_ -as ($type -as [type])
-				$collection.Add($item.id, $item)
-			}
-			$remain -= $limit
-			$offset += $limit
-			if ($remain -lt 100) { $limit = $remain}
-
-			$IRMParams.Uri = $this.Server + $path + '.json?offset=' + $offset + '&limit=' + $limit + $this.include + $filter
-			$Response = Invoke-RestMethod @IRMParams
+		Switch ($type) {
+			{$_ -in 'version'} { $this.request('GET', $path + '.json').$($this.setname) | % { $item = $_ -as ($type -as [type]); $collection.Add($item.id, $item) } }
+			default { $collection = $this.allpages($path + '.json', $filter) }
 		}
-		#>
+
 		return $collection
 	}
 
