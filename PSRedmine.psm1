@@ -250,6 +250,7 @@ Class Project : BaseResource {
 	[PSCustomObject]$parent
 	[String]$status
 	[Bool]$is_public
+	[Bool]$inherit_members
 
 	[PSCustomObject[]]$trackers
 	[PSCustomObject[]]$issue_categories
