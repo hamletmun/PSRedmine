@@ -53,7 +53,9 @@ Class Redmine {
 			Uri = "$($this.Server)/login"
 		}
 		$Response = Invoke-WebRequest @IWRParams
-		$this.CSRFToken = $Response.Forms.Fields['authenticity_token']
+		If ($Response.Forms.Fields) {
+			$this.CSRFToken = $Response.Forms.Fields['authenticity_token']
+		}
 		$this.Session = Get-Variable -name $sess -ValueOnly
 
 		$this.project = $this.new('project')
