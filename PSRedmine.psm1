@@ -159,11 +159,13 @@ Class BaseResource {
 	}
 
 	[Hashtable]allpages($base_url,$filter) {
+		Write-Debug $filter
 		$offset = 0
 		$limit = 100
 
-		$Response = $this.request('GET', $base_url + '?offset=' + $offset + '&limit=' + $limit) # + $this.include + $filter)
+		$Response = $this.request('GET', $base_url + '?offset=' + $offset + '&limit=' + $limit + $this.include + $filter)
 		$remain = $Response.total_count
+		Write-Debug "$offset + $remain"
 
 		$collection = @{}
 		While ($remain -gt 0) {
@@ -174,11 +176,10 @@ Class BaseResource {
 			}
 			$remain -= $limit
 			$offset += $limit
-			Write-Debug $offset
-			Write-Debug $remain
+			Write-Debug "$offset + $remain"
 			if ($remain -lt 100) { $limit = $remain}
 
-			$Response = $this.request('GET', $base_url + '?offset=' + $offset + '&limit=' + $limit) # + $this.include + $filter)
+			$Response = $this.request('GET', $base_url + '?offset=' + $offset + '&limit=' + $limit + $this.include + $filter)
 		}
 		return $collection
 	}
@@ -429,13 +430,16 @@ Function Search-RedmineResource {
 	Param(
 		[Parameter(Mandatory=$true)][ResourceType]$type,
 		[String]$keyword,
-		[String]$project_id
+		[String]$project_id,
+		[ValidateSet('open','closed','*')][String]$status='open'
 	)
 
-	$filter = If ($project_id) { $filter = '&project_id=' + $project_id }
+	$filter = ''
+	If ($project_id) { $filter += '&project_id=' + $project_id }
+	If ($status) { $filter += '&status_id=' + $status }
 
 	$collection = Switch ($type) {
-	{$_ -in 'membership','version'} { $Redmine.$type.all('',$project_id) }
+	{$_ -in 'membership','version'} { $Redmine.$type.all($filter,$project_id) }
 	default { $Redmine.$type.all($filter) }
     }
 
