@@ -24,6 +24,7 @@ Search-RedmineResource project -keyword testproject
 Search-RedmineResource membership -project_id test99
 Search-RedmineResource version -project_id test99 -keyword testversion 
 Search-RedmineResource issue -keyword testissue
+Search-RedmineResource issue -project_id 475 -status *
 Search-RedmineResource user -keyword testuser # Administrator only
 
 Get-RedmineResource project test99
