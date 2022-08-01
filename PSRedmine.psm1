@@ -40,7 +40,16 @@ Class Redmine {
 
 	Redmine([String]$Server, [Hashtable]$IWRParams) {
 		$this.Server = $Server
-		$this.signin($IWRParams)
+		If ($Script:APIKey) {
+			Write-Host "X-Redmine-API-Key Saved"
+		} Else {
+			$this.signin($IWRParams)
+		}
+		$this.project = $this.new('project')
+		$this.issue = $this.new('issue')
+		$this.membership = $this.new('membership')
+		$this.version = $this.new('version')
+		$this.user = $this.new('user')
 	}
 
 	# Methods
@@ -57,12 +66,6 @@ Class Redmine {
 			$this.CSRFToken = $Response.Forms.Fields['authenticity_token']
 		}
 		$this.Session = Get-Variable -name $sess -ValueOnly
-
-		$this.project = $this.new('project')
-		$this.issue = $this.new('issue')
-		$this.membership = $this.new('membership')
-		$this.version = $this.new('version')
-		$this.user = $this.new('user')
 	}
 
 	Hidden signout() {
@@ -129,11 +132,20 @@ Class BaseResource {
 	}
 
 	[PSCustomObject]request($Method, $Uri) {
-		$IRMParams = @{
-			WebSession = $this.Session
-			Method = $Method
-			Uri = $this.Server + '/' + $Uri
+		$IRMParams = @{ Method = $Method }
+		If ($Script:APIKey) {
+			$IRMParams += @{ Headers = @{'X-Redmine-API-Key'=$Script:APIKey}}
+			If ($Uri.Contains('?')) {
+				$Uri = $Uri + '&key=' + $Script:APIKey
+			} Else {
+				$Uri = $Uri + '?key=' + $Script:APIKey
+			}
+		} Else {
+			$IRMParams += @{
+				WebSession = $this.Session
+			}
 		}
+		$IRMParams += @{ Uri = $this.Server + '/' + $Uri }
 		If ($Method -Match 'POST|PUT') {
 			$IRMParams += @{
 				ContentType = 'application/json'
@@ -381,9 +393,8 @@ Function Connect-Redmine{
 	Remove-Variable -Name Redmine -Scope script -EA 0
 
 	If ($Key) {
-		$IWRParams = @{
-			Headers = @{'X-Redmine-API-Key'=$Key}
-		}
+		$IWRParams = @{}
+		$Script:APIKey = $Key
 	} Else {
 		If (!($Username)) { If (!($Username = Read-Host "Enter username or blank for [$env:USERNAME]")) { $Username = $env:USERNAME } }
 		If ($Password) { [Security.SecureString]$Password = ConvertTo-SecureString $Password -AsPlainText -Force }
@@ -394,7 +405,6 @@ Function Connect-Redmine{
 		}
 	}
 	$Script:Redmine = [Redmine]::new($Server, $IWRParams)
-
 }
 
 Function Disconnect-Redmine {
@@ -412,6 +422,7 @@ Function Disconnect-Redmine {
 	#>
 
 	Remove-Variable -Name Redmine -Scope script
+	If ($Script:APIKey) { Remove-Variable -Name APIKey -Scope script }
 }
 
 Function Search-RedmineResource {
