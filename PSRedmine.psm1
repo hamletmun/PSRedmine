@@ -269,6 +269,7 @@ Class Project : BaseResource {
 	[PSCustomObject[]]$issue_categories
 	[PSCustomObject[]]$enabled_modules
 	[PSCustomObject[]]$time_entry_activities
+	[PSCustomObject[]]$default_version
 }
 
 Class Issue : BaseResource {
