@@ -48,4 +48,5 @@ Disconnect-Redmine
 
 ## Reference
 * [Redmine API](http://www.redmine.org/projects/redmine/wiki/Rest_api) wiki page
+  * [Using the REST API with Powershell](https://www.redmine.org/projects/redmine/wiki/Rest_api_with_powershell)
 * [Python-Redmine](https://github.com/maxtepkeev/python-redmine)
