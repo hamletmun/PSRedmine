@@ -110,10 +110,8 @@ Class BaseResource {
 		$UTF8 = [System.Text.Encoding]::UTF8
 		$JSON = @{ $type = @{} }
 		foreach ( $property in $this.psobject.properties.name ) {
-			If ([String]::IsNullOrWhiteSpace($this.$property)) { 
-				Switch ($property) {
-					'watchers' { $JSON.$type.Add( 'watcher_user_ids', $this.watchers.id ) }
-				}
+			If ([String]::IsNullOrWhiteSpace($this.$property) -or $this.$property -eq 0 -or $this.$property.length -eq 0) { 
+				continue
 			} Else {
 				Switch ($property) {
 					'project' { $JSON.$type.Add( 'project_id', $this.project.id ) }
@@ -123,12 +121,15 @@ Class BaseResource {
 					'parent' { $JSON.$type.Add( 'parent_issue_id', $this.parent.id ) }
 					'assigned_to' { $JSON.$type.Add( 'assigned_to_id', $this.assigned_to.id ) }
 					'category' { $JSON.$type.Add( 'category_id', $this.category.id ) }
+					'watchers' { $JSON.$type.Add( 'watcher_user_ids', $this.watchers.id ) }
+					{$_ -in 'setname','include','Server','Session'} { }
 					default { $JSON.$type.Add( $property, $this.$property ) }
 				}
 			}
 		}
-		$JSON = $JSON | ConvertTo-Json -Depth 10
-		return $UTF8.GetBytes($JSON)
+		$JSON = $JSON | ConvertTo-Json -Depth 10 -Compress
+		Write-Debug $JSON
+		return $JSON
 	}
 
 	[PSCustomObject]request($Method, $Uri) {
@@ -153,6 +154,7 @@ Class BaseResource {
 			}
 		}
 		$Response = Invoke-RestMethod @IRMParams
+		Write-Debug $Response
 		return $Response
 	}
 
