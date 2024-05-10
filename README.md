@@ -18,7 +18,7 @@ Connect-Redmine demo.redmine.org -Username hamletmun
 
 New-RedmineResource project -identifier test99 -name testproject
 New-RedmineResource version -project_id 475 -name testversion
-New-RedmineResource issue -project_id test99 -subject testissue
+New-RedmineResource issue -project_id test99 -subject testissue -custom_fields @(@{'value'='test1';'id'=1};@{'value'='test3';'id'=3})
 
 Search-RedmineResource project -keyword testproject
 Search-RedmineResource membership -project_id test99
