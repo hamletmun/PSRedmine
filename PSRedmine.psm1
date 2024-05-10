@@ -485,7 +485,8 @@ Function Set-RedmineResource {
 		[String]$name,
 		[String]$subject,
 		[Int]$default_version_id,
-		[String]$notes
+		[String]$notes,
+		[PSCustomObject[]]$custom_fields
 	)
 
 	$resource = $Redmine.new($type)
@@ -545,7 +546,8 @@ Function New-RedmineResource {
 		[String]$name,
 		[String]$subject,
 		[Int]$default_version_id,
-		[String]$notes
+		[String]$notes,
+		[PSCustomObject[]]$custom_fields
 	)
 
 	$resource = Set-RedmineResource @PSBoundParameters
@@ -607,7 +609,8 @@ Function Edit-RedmineResource {
 		[String]$name,
 		[String]$subject,
 		[Int]$default_version_id,
-		[String]$notes
+		[String]$notes,
+		[PSCustomObject[]]$custom_fields
 	)
 	$resource = Set-RedmineResource @PSBoundParameters
 	$resource.id = $id
