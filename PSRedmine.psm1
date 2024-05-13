@@ -110,7 +110,8 @@ Class BaseResource {
 		$UTF8 = [System.Text.Encoding]::UTF8
 		$JSON = @{ $type = @{} }
 		foreach ( $property in $this.psobject.properties.name ) {
-			If ([String]::IsNullOrWhiteSpace($this.$property) -or $this.$property -eq 0 -or $this.$property.length -eq 0) { 
+			If ($this.$property -eq 0 -or $this.$property.Count -eq 0) { 
+				Write-Debug "Null $property"
 				continue
 			} Else {
 				Switch ($property) {
@@ -121,7 +122,9 @@ Class BaseResource {
 					'parent' { $JSON.$type.Add( 'parent_issue_id', $this.parent.id ) }
 					'assigned_to' { $JSON.$type.Add( 'assigned_to_id', $this.assigned_to.id ) }
 					'category' { $JSON.$type.Add( 'category_id', $this.category.id ) }
-					'watchers' { $JSON.$type.Add( 'watcher_user_ids', $this.watchers.id ) }
+					'watchers' { $JSON.$type.Add( 'watcher_user_ids', @() )
+					    $this.watchers | %{ $JSON.$type.watcher_user_ids += $_.id }
+					}
 					{$_ -in 'setname','include','Server','Session'} { }
 					default { $JSON.$type.Add( $property, $this.$property ) }
 				}
@@ -479,7 +482,7 @@ Function Set-RedmineResource {
 		[Int]$version_id,
 		[Int]$parent_issue_id,
 		[Datetime]$due_date,
-		[Int[]]$watcher_user_ids,
+		[Int[]]$watchers,
 		[String]$description,
 		[String]$identifier,
 		[String]$name,
@@ -504,13 +507,15 @@ Function Set-RedmineResource {
 			'version_id' { $resource.fixed_version = [PSCustomObject]@{ id = $boundparam.Value } }
 			'parent_issue_id' { $resource.parent = [PSCustomObject]@{ id = $boundparam.Value } }
 			'due_date' { $resource.due_date = $due_date.ToString("yyyy-MM-dd") }
-			'watcher_user_ids' { $boundparam.Value | % { $resource.watchers += [PSCustomObject]@{ id = $_ } } }
+			'watchers' { $boundparam.Value | % { $resource.watchers += [PSCustomObject]@{ id = $_ } } }
 			default { If ($boundparam.Key -In $resource.PSobject.Properties.Name) {
 				$resource.$($boundparam.Key) = $boundparam.Value
 			}}
 		}
     }
 
+	Write-Debug 'Returned from Set-RedmineResource'
+	Write-Debug ($resource | Out-String)
 	return $resource
 }
 
@@ -540,7 +545,7 @@ Function New-RedmineResource {
 		[Int]$version_id,
 		[Int]$parent_issue_id,
 		[Datetime]$due_date,
-		[Int[]]$watcher_user_ids,
+		[Int[]]$watchers,
 		[String]$description,
 		[String]$identifier,
 		[String]$name,
@@ -603,7 +608,7 @@ Function Edit-RedmineResource {
 		[Int]$version_id,
 		[Int]$parent_issue_id,
 		[Datetime]$due_date,
-		[Int[]]$watcher_user_ids,
+		[Int[]]$watchers,
 		[String]$description,
 		[String]$identifier,
 		[String]$name,
