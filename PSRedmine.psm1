@@ -83,6 +83,7 @@ Class Redmine {
 			WebSession = $this.Session
 		}
 		$Response = Invoke-RestMethod @IRMParams
+		Write-Debug $Response
 		return $Response
 	}
 
@@ -312,23 +313,6 @@ Class Issue : BaseResource {
 	[PSCustomObject[]]$journals
 	[String]$notes
 	[PSCustomObject[]]$watchers
-
-	AddWatcher($user_id) {
-		$IRMParams = @{
-			Method = 'POST'
-			Uri = $this.Server + '/issues/' + $this.id + '/watchers.json'
-			ContentType = 'application/json'
-			Body = '{ "user_id": "' + $user_id + '" }'
-		}
-		Invoke-RestMethod @IRMParams
-	}
-	RemoveWatcher($user_id) {
-		$IRMParams = @{
-			Method = 'DELETE'
-			Uri = $this.Server + '/issues/' + $this.id + '/watchers/' + $user_id + '.json'
-		}
-		Invoke-RestMethod @IRMParams
-	}
 }
 
 Class Membership : BaseResource {
@@ -428,7 +412,7 @@ Function Disconnect-Redmine {
 	#>
 
 	Remove-Variable -Name Redmine -Scope script
-	If ($Script:APIKey) { Remove-Variable -Name APIKey -Scope script }
+	If ($APIKey) { Remove-Variable -Name APIKey -Scope script }
 }
 
 Function Search-RedmineResource {
@@ -640,6 +624,35 @@ Function Remove-RedmineResource {
 	)
 
 	$Redmine.$type.get($id).delete()
+}
+
+Function Get-RedmineProjectMembers {
+    Param(
+        [String]$project_id
+    )
+    $Response = Search-RedmineResource membership -project_id (Get-RedmineResource project $project_id).id
+    $Response.Keys | % { $Response[$_].user } | Sort-Object name
+}
+
+Function Add-RedmineWatcher {
+	Param(
+		[Int]$issue_id,
+        [Int[]]$watchers
+	)
+	ForEach ($user_id in $watchers) {
+        $JSON = '{ "user_id": "' + $user_id + '" }'
+        $Response = Invoke-RestMethod -Method POST -ContentType application/json -URI "$($Redmine.Server)/issues/$issue_id/watchers.json?key=$Script:APIKey" -Body $JSON
+    }
+}
+
+Function Remove-RedmineWatcher {
+	Param(
+		[Int]$issue_id,
+        [Int[]]$watchers
+	)
+	ForEach ($user_id in $watchers) {
+        $Response = Invoke-RestMethod -Method DELETE -URI "$($Redmine.Server)/issues/$issue_id/watchers/$user_id.json?key=$Script:APIKey"
+    }
 }
 
 #endregion

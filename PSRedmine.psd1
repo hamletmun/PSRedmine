@@ -5,5 +5,6 @@ ModuleVersion = '0.0.1'
 RequiredModules = 'Microsoft.PowerShell.Utility'
 RootModule = 'PSRedmine.psm1'
 FunctionsToExport = @('Connect-Redmine','Disconnect-Redmine','Send-HTTPRequest',
- 'Search-RedmineResource','New-RedmineResource','Get-RedmineResource','Edit-RedmineResource','Remove-RedmineResource')
+ 'Search-RedmineResource','New-RedmineResource','Get-RedmineResource','Edit-RedmineResource','Remove-RedmineResource',
+ 'Get-RedmineProjectMembers','Add-RedmineWatcher','Remove-RedmineWatcher')
 }

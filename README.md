@@ -43,6 +43,9 @@ Remove-RedmineResource version 408
 Remove-RedmineResource project test99 # Administrator only
 Remove-RedmineResource user 20 # Administrator only
 
+Add-RedmineWatcher 29552 -watchers 101,103
+Remove-RedmineWatcher 29552 -watchers 101,103
+
 Disconnect-Redmine
 ```
 
