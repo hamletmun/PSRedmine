@@ -1,6 +1,6 @@
 #Requires -Version 5.0
 
-$DebugPreference = "SilentlyContinue"
+#$DebugPreference = "Continue"
 
 enum ResourceType {
 	project
@@ -207,7 +207,7 @@ Class BaseResource {
 	[Hashtable]all($filter,$project_id) {
 		$type = $this.GetType().Name.ToLower()
 		$path = Switch ($type) {
-			{$_ -in 'membership','version'} { 'projects/' + $project_id + '/' + $this.setname }
+			{$_ -in 'issue','membership','version'} { 'projects/' + $project_id + '/' + $this.setname }
 			default { $this.setname }
 		}
 		Write-Debug $path
@@ -432,17 +432,19 @@ Function Search-RedmineResource {
 		[Parameter(Mandatory=$true)][ResourceType]$type,
 		[String]$keyword,
 		[String]$project_id,
+		[String]$updated_on,
 		[ValidateSet('open','closed','*')][String]$status='open'
 	)
 
 	$filter = ''
 	If ($project_id) { $filter += '&project_id=' + $project_id }
+	If ($updated_on) { $filter += '&updated_on=' + $updated_on }
 	If ($status) { $filter += '&status_id=' + $status }
 
 	$collection = Switch ($type) {
-	{$_ -in 'membership','version'} { $Redmine.$type.all($filter,$project_id) }
-	default { $Redmine.$type.all($filter) }
-    }
+		{$_ -in 'issue','membership','version'} { $Redmine.$type.all($filter,$project_id) }
+		default { $Redmine.$type.all($filter) }
+	}
 
 	$filtered = @{}
 	Switch ($type) {
@@ -496,7 +498,7 @@ Function Set-RedmineResource {
 				$resource.$($boundparam.Key) = $boundparam.Value
 			}}
 		}
-    }
+	}
 
 	Write-Debug 'Returned from Set-RedmineResource'
 	Write-Debug ($resource | Out-String)
