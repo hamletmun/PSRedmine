@@ -643,7 +643,7 @@ Function Add-RedmineWatcher {
 	)
 	ForEach ($user_id in $watchers) {
         $JSON = '{ "user_id": "' + $user_id + '" }'
-        $Response = Invoke-RestMethod -Method POST -ContentType application/json -URI "$($Redmine.Server)/issues/$issue_id/watchers.json?key=$Script:APIKey" -Body $JSON
+        $Response = Invoke-RestMethod -Method POST -ContentType application/json -URI "$($Redmine.Server)/issues/$issue_id/watchers.json?key=$Script:APIKey" -Headers @{'X-Redmine-API-Key'=$Script:APIKey} -Body $JSON
     }
 }
 
@@ -653,7 +653,7 @@ Function Remove-RedmineWatcher {
         [Int[]]$watchers
 	)
 	ForEach ($user_id in $watchers) {
-        $Response = Invoke-RestMethod -Method DELETE -URI "$($Redmine.Server)/issues/$issue_id/watchers/$user_id.json?key=$Script:APIKey"
+        $Response = Invoke-RestMethod -Method DELETE -URI "$($Redmine.Server)/issues/$issue_id/watchers/$user_id.json?key=$Script:APIKey" -Headers @{'X-Redmine-API-Key'=$Script:APIKey}
     }
 }
 
